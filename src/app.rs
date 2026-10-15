@@ -7,6 +7,7 @@
 //! the agent away, everything but sending still works.
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
@@ -145,6 +146,10 @@ pub struct Ui {
     store: MessageStore,
     blocked: BlockList,
     book: RefCell<AddressBook>,
+    /// A monitor per watched address book directory.
+    contact_monitors: RefCell<HashMap<PathBuf, gio::FileMonitor>>,
+    /// The reload waiting for a burst of contact changes to settle.
+    contacts_pending: RefCell<Option<glib::SourceId>>,
     region: RefCell<String>,
     proxy: RefCell<Option<Messages1Proxy<'static>>>,
     service: Cell<bool>,
@@ -233,6 +238,8 @@ impl Ui {
             store,
             blocked,
             book: RefCell::new(book),
+            contact_monitors: RefCell::new(HashMap::new()),
+            contacts_pending: RefCell::new(None),
             region: RefCell::new(region),
             proxy: RefCell::new(None),
             service: Cell::new(false),
@@ -392,27 +399,51 @@ impl Ui {
             .any(|n| self.blocked.is_blocked(n, &region).unwrap_or(false))
     }
 
+    /// Watch the address book's directories (the root and each book, as
+    /// the book lists them), reload once a burst of changes settles, and
+    /// watch any book created since.
     fn watch_contacts(self: &Rc<Self>) {
-        let root = self.book.borrow().root().to_path_buf();
-        let _ = std::fs::create_dir_all(&root);
-        let mut dirs = vec![root.clone()];
-        if let Ok(rd) = std::fs::read_dir(&root) {
-            dirs.extend(rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()));
-        }
-        for d in dirs {
-            if let Ok(m) = gio::File::for_path(&d)
-                .monitor_directory(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE)
-            {
-                let weak = Rc::downgrade(self);
-                m.connect_changed(move |_, _, _, _| {
-                    if let Some(ui) = weak.upgrade() {
-                        if ui.book.borrow_mut().reload_if_changed() {
-                            ui.refresh_all();
-                        }
-                    }
-                });
-                self._keep.borrow_mut().push(m);
+        let dirs = {
+            let book = self.book.borrow();
+            let _ = std::fs::create_dir_all(book.root());
+            book.watch_dirs()
+        };
+        let mut monitors = self.contact_monitors.borrow_mut();
+        monitors.retain(|d, m| {
+            let keep = dirs.contains(d);
+            if !keep {
+                m.cancel();
             }
+            keep
+        });
+        for d in dirs {
+            if monitors.contains_key(&d) {
+                continue;
+            }
+            let Ok(m) = gio::File::for_path(&d)
+                .monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE)
+            else {
+                continue;
+            };
+            let weak = Rc::downgrade(self);
+            m.connect_changed(move |_, _, _, _| {
+                let Some(ui) = weak.upgrade() else {
+                    return;
+                };
+                if let Some(id) = ui.contacts_pending.borrow_mut().take() {
+                    id.remove();
+                }
+                let u = ui.clone();
+                let id = glib::timeout_add_local_once(Duration::from_millis(300), move || {
+                    u.contacts_pending.borrow_mut().take();
+                    if u.book.borrow_mut().reload_if_changed() {
+                        u.refresh_all();
+                    }
+                    u.watch_contacts();
+                });
+                *ui.contacts_pending.borrow_mut() = Some(id);
+            });
+            monitors.insert(d, m);
         }
     }
 
