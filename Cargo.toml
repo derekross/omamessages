@@ -1,7 +1,7 @@
 [package]
 name = "omamessages"
-description = "Messages: SMS conversations for Omarchy Mobile"
-version = "0.2.2"
+description = "Messages: SMS and MMS conversations for Omarchy Mobile"
+version = "0.3.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
 rust-version = "1.87"
@@ -42,3 +42,15 @@ anyhow = "1"
 opt-level = 3
 # Stripped by the linker, so a cross-built binary needs no aarch64 strip.
 strip = true
+
+# MMS needs omatel 0.3's Messages1 members (SendWithAttachments, ListParts,
+# MmsReady, MmsAvailable) and store (parts, groups): derekross/omatel#3.
+# Until omatel tags a release with them, build against that branch; replace
+# this with the tag bump above (and `cargo update -p omatel-api`) once the
+# tag exists.
+[patch."https://github.com/derekross/omatel"]
+omatel-api = { git = "https://github.com/johannSo/omatel", branch = "mms-through-mmsd-tng" }
+omatel-store = { git = "https://github.com/johannSo/omatel", branch = "mms-through-mmsd-tng" }
+omatel-contacts = { git = "https://github.com/johannSo/omatel", branch = "mms-through-mmsd-tng" }
+omatel-theme = { git = "https://github.com/johannSo/omatel", branch = "mms-through-mmsd-tng" }
+omatel-mock = { git = "https://github.com/johannSo/omatel", branch = "mms-through-mmsd-tng" }

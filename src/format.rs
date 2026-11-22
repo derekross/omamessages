@@ -105,6 +105,29 @@ where
     }
 }
 
+/// What stands in for the text of an MMS that has none, from its parts'
+/// MIME types: "Picture", "Pictures", "Attachment" or "Attachments".
+pub fn parts_stand_in(mimes: &[&str]) -> &'static str {
+    let pictures = mimes.iter().all(|m| m.starts_with("image/"));
+    match (mimes.len(), pictures) {
+        (0, _) => "",
+        (1, true) => "Picture",
+        (_, true) => "Pictures",
+        (1, false) => "Attachment",
+        _ => "Attachments",
+    }
+}
+
+/// A file size for people: "830 bytes", "12 KB", "1.4 MB".
+pub fn file_size(bytes: i64) -> String {
+    const KB: i64 = 1024;
+    match bytes {
+        b if b < KB => format!("{b} bytes"),
+        b if b < KB * KB => format!("{} KB", (b + KB / 2) / KB),
+        b => format!("{:.1} MB", b as f64 / (KB * KB) as f64),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,6 +211,18 @@ mod tests {
         let f = msg(Direction::Out, MessageState::Failed, "late", 0);
         assert_eq!(snippet(Some(&f), "", 40).0, "Not sent: ");
         assert_eq!(snippet(None, "", 10), ("", String::new()));
+    }
+
+    #[test]
+    fn attachments_in_words() {
+        assert_eq!(parts_stand_in(&[]), "");
+        assert_eq!(parts_stand_in(&["image/jpeg"]), "Picture");
+        assert_eq!(parts_stand_in(&["image/jpeg", "image/png"]), "Pictures");
+        assert_eq!(parts_stand_in(&["text/x-vcard"]), "Attachment");
+        assert_eq!(parts_stand_in(&["image/png", "video/mp4"]), "Attachments");
+        assert_eq!(file_size(830), "830 bytes");
+        assert_eq!(file_size(12_300), "12 KB");
+        assert_eq!(file_size(1_468_006), "1.4 MB");
     }
 
     #[test]

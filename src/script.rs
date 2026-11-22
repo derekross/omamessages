@@ -5,9 +5,11 @@
 //!
 //! Steps: `wait SECONDS`, `open N` (the Nth conversation in the list,
 //! from 0), `open-archived`, `compose`, `type TEXT` (into the composer,
-//! or the To field on the compose page), `search TEXT` (empty clears),
-//! `settings`, `close-settings`, `blocked`, `back`, `menu N` (the
-//! long-press menu of row N), `close-menu`, `shot PATH` and `quit`.
+//! or the To field on the compose page), `attach PATH` (a file for the
+//! open thread's next message), `add NUMBER` (a recipient for a group, on
+//! the compose page), `search TEXT` (empty clears), `settings`,
+//! `close-settings`, `blocked`, `back`, `menu N` (the long-press menu of
+//! row N), `close-menu`, `shot PATH` and `quit`.
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -19,6 +21,8 @@ pub enum Step {
     OpenArchived,
     Compose,
     Type(String),
+    Attach(PathBuf),
+    Add(String),
     Search(String),
     Settings,
     CloseSettings,
@@ -56,6 +60,10 @@ pub fn parse(text: &str) -> Result<Vec<Step>, String> {
             "open-archived" => Step::OpenArchived,
             "compose" => Step::Compose,
             "type" => Step::Type(arg.to_string()),
+            "attach" if !arg.is_empty() => Step::Attach(PathBuf::from(arg)),
+            "attach" => return Err("attach: needs a path".into()),
+            "add" if !arg.is_empty() => Step::Add(arg.to_string()),
+            "add" => return Err("add: needs a number".into()),
             "search" => Step::Search(arg.to_string()),
             "settings" => Step::Settings,
             "close-settings" => Step::CloseSettings,
@@ -79,8 +87,8 @@ mod tests {
     #[test]
     fn parses_every_step() {
         let s = parse(
-            "wait 0.5; open 2; open-archived\ncompose; type Hello there; search din;\
-             search; settings; close-settings; blocked; back; menu 1; close-menu; shot /tmp/a.png; quit",
+            "wait 0.5; open 2; open-archived\ncompose; type Hello there; attach /tmp/p.png; \
+             add +12025550101; search din; search; settings; close-settings; blocked; back; menu 1; close-menu; shot /tmp/a.png; quit",
         )
         .unwrap();
         assert_eq!(
@@ -91,6 +99,8 @@ mod tests {
                 Step::OpenArchived,
                 Step::Compose,
                 Step::Type("Hello there".into()),
+                Step::Attach("/tmp/p.png".into()),
+                Step::Add("+12025550101".into()),
                 Step::Search("din".into()),
                 Step::Search(String::new()),
                 Step::Settings,
@@ -110,6 +120,8 @@ mod tests {
         assert!(parse("open x").is_err());
         assert!(parse("wait -1").is_err());
         assert!(parse("shot").is_err());
+        assert!(parse("attach").is_err());
+        assert!(parse("add").is_err());
         assert!(parse("dance").is_err());
         assert_eq!(parse(" ; ;").unwrap(), vec![]);
     }

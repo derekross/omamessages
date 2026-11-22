@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! `sms:`, `smsto:`, `mms:` and `mmsto:` links (RFC 5724 and the forms
 //! browsers and other phones use): `sms:+12025550100?body=Hello%20there`,
-//! `smsto:+12025550100`, `sms:+1...,+1...` (a group: MMS comes with T3,
-//! so for now the first recipient), iOS's `sms:NUMBER&body=...`.
+//! `smsto:+12025550100`, `sms:+1...,+1...` (a group conversation, sent
+//! as MMS), iOS's `sms:NUMBER&body=...`.
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SmsUri {
