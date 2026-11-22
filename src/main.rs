@@ -7,6 +7,7 @@
 
 mod app;
 mod format;
+mod mmsconfig;
 mod script;
 mod segments;
 mod uri;

@@ -9,7 +9,9 @@ bin/install      # build and install the package (pkgbuild/PKGBUILD)
 
 You need Rust, pkgconf, gtk4 (4.14 or later), libadwaita (1.5 or later)
 and sqlite with their headers. omatel's crates come from git, at the tag
-named in `Cargo.toml`, pinned in `Cargo.lock`.
+named in `Cargo.toml`, pinned in `Cargo.lock`. For now a `[patch]` in
+`Cargo.toml` takes them from an omatel checkout next to this one
+(`../omatel`), because MMS needs omatel 0.3's API before it is tagged.
 
 ## Cross-compile for the phone
 
@@ -26,7 +28,7 @@ bin/cross package     # pkgbuild/omamessages-<version>-1-aarch64.pkg.tar.zst
 ## Tests
 
 - `scripts/check.sh`: US spelling, rustfmt, clippy `-D warnings`, the unit
-  tests (the sms: link parser, SMS part counting, time and day-separator text, snippets, the script parser).
+  tests (the sms: link parser, SMS part counting, time and day-separator text, snippets, attachment stand-ins and sizes, mmsd-tng's settings file, the script parser).
 - `scripts/ui-shots.sh`: every page at 456x900 in a headless Weston inside
   a container (never on your desktop), on fictional demo data
   (`examples/demo-data.rs`), without the agent, into

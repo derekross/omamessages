@@ -7,7 +7,9 @@ behaves like AOSP's Messaging app; none of AOSP's code is used.
 Messages talks to the modem through **omatel-agent**, the background service
 it shares with Phone, from the
 [omatel](https://github.com/derekross/omatel) repository. The agent keeps
-running when the app is closed: it stores every incoming SMS, notifies you with an inline reply, and sends messages.
+running when the app is closed: it stores every incoming SMS and MMS, notifies you with an inline reply, and sends messages.
+MMS (pictures, other attachments and group conversations) go through
+mmsd-tng, which the agent talks to.
 Messages reads the same stores and address book as the agent, and uses
 omatel's shared crates, pinned to an omatel release tag.
 
@@ -18,14 +20,27 @@ omatel's shared crates, pinned to an omatel release tag.
 - Threads with bubbles, day separators and the state of each message
   (Sending, Sent, Delivered, Not sent with a tap to retry). Older messages
   load as you scroll up. The composer counts SMS parts.
-- Writing to a contact or to any number, blocking, and settings
-  (notifications, what the lock screen shows, delivery reports).
+- MMS: pictures shown in their bubbles, other attachments as a file row
+  that opens in the app your desktop picks; the attach button picks
+  pictures (or any file) for the next message, shown above the composer
+  until it goes. Group conversations show who wrote each message.
+- Writing to a contact, to any number, or to several people at once (the
+  + on a suggestion adds a person to a group message), blocking, and
+  settings (notifications, what the lock screen shows, delivery reports,
+  and mmsd-tng's MMSC, MMS proxy and MMS APN).
 - Export and import of all messages as JSON (`omamessages --export FILE`,
   `--import FILE`; the format is in omatel's `docs/export-format.md`).
 - `sms:`, `smsto:`, `mms:` and `mmsto:` links, with `?body=`.
 
-Not yet: MMS, pictures and group messages (they arrive with mmsd-tng; the
-attach button is there, disabled), and RCS (not planned).
+Not yet: RCS (not planned). Pictures go as they are: Messages doesn't
+shrink them to the carrier's size limit yet (the agent says when one is
+too big).
+
+**MMS settings.** mmsd-tng keeps the carrier's MMSC, MMS proxy and MMS APN
+in `~/.mms/modemmanager/mms`. Messages' settings change them through
+mmsd-tng's own D-Bus interface while it runs (they apply at once), and in
+that file while it doesn't (mmsd-tng reads it when it starts). An empty
+MMSC lets mmsd-tng look the carrier up; an empty proxy is "none".
 
 ## Install
 

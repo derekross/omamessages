@@ -1143,7 +1143,7 @@ dependencies = [
 
 [[package]]
 name = "omamessages"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -1165,8 +1165,8 @@ dependencies = [
 
 [[package]]
 name = "omatel-api"
-version = "0.2.1"
-source = "git+https://github.com/derekross/omatel?tag=v0.2.1#4537d9114df519986e872bd1210ab53b313d15dd"
+version = "0.3.0"
+source = "git+https://github.com/johannSo/omatel?branch=mms-through-mmsd-tng#25e1522daa31e649baba15f9a98e94595a410774"
 dependencies = [
  "serde",
  "toml 0.9.12+spec-1.1.0",
@@ -1176,8 +1176,8 @@ dependencies = [
 
 [[package]]
 name = "omatel-contacts"
-version = "0.2.1"
-source = "git+https://github.com/derekross/omatel?tag=v0.2.1#4537d9114df519986e872bd1210ab53b313d15dd"
+version = "0.3.0"
+source = "git+https://github.com/johannSo/omatel?branch=mms-through-mmsd-tng#25e1522daa31e649baba15f9a98e94595a410774"
 dependencies = [
  "phonenumber",
  "thiserror",
@@ -1186,8 +1186,8 @@ dependencies = [
 
 [[package]]
 name = "omatel-mock"
-version = "0.2.1"
-source = "git+https://github.com/derekross/omatel?tag=v0.2.1#4537d9114df519986e872bd1210ab53b313d15dd"
+version = "0.3.0"
+source = "git+https://github.com/johannSo/omatel?branch=mms-through-mmsd-tng#25e1522daa31e649baba15f9a98e94595a410774"
 dependencies = [
  "anyhow",
  "clap",
@@ -1203,8 +1203,8 @@ dependencies = [
 
 [[package]]
 name = "omatel-store"
-version = "0.2.1"
-source = "git+https://github.com/derekross/omatel?tag=v0.2.1#4537d9114df519986e872bd1210ab53b313d15dd"
+version = "0.3.0"
+source = "git+https://github.com/johannSo/omatel?branch=mms-through-mmsd-tng#25e1522daa31e649baba15f9a98e94595a410774"
 dependencies = [
  "omatel-contacts",
  "rusqlite",
@@ -1216,8 +1216,8 @@ dependencies = [
 
 [[package]]
 name = "omatel-theme"
-version = "0.2.1"
-source = "git+https://github.com/derekross/omatel?tag=v0.2.1#4537d9114df519986e872bd1210ab53b313d15dd"
+version = "0.3.0"
+source = "git+https://github.com/johannSo/omatel?branch=mms-through-mmsd-tng#25e1522daa31e649baba15f9a98e94595a410774"
 dependencies = [
  "gtk4",
  "libadwaita",
