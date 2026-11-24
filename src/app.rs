@@ -1407,9 +1407,49 @@ impl Ui {
             .wrap(true)
             .wrap_mode(pango::WrapMode::WordChar)
             .xalign(0.0)
-            .selectable(true)
+            // Not selectable: a long-press opens the message menu (Copy
+            // text, Delete) instead of a text selection.
+            .selectable(false)
             .max_width_chars(26)
             .build();
+        // Web addresses are underlined and open in the browser on a tap.
+        // Not the label's own links: those take the long-press too.
+        if let Some(markup) = format::link_markup(&m.body) {
+            text.set_markup(&markup);
+            let found = format::links(&m.body);
+            let label = text.clone();
+            let weak = Rc::downgrade(self);
+            let click = gtk::GestureClick::new();
+            click.connect_released(move |g, n, x, y| {
+                if n != 1 {
+                    return;
+                }
+                let (ox, oy) = label.layout_offsets();
+                let scale = pango::SCALE as f64;
+                let (inside, index, _) = label.layout().xy_to_index(
+                    ((x - ox as f64) * scale) as i32,
+                    ((y - oy as f64) * scale) as i32,
+                );
+                let i = index as usize;
+                let Some((_, _, href)) = found.iter().find(|(a, b, _)| inside && i >= *a && i < *b)
+                else {
+                    return;
+                };
+                g.set_state(gtk::EventSequenceState::Claimed);
+                if let Some(ui) = weak.upgrade() {
+                    gtk::UriLauncher::new(href).launch(
+                        Some(&ui.window),
+                        gio::Cancellable::NONE,
+                        |r| {
+                            if let Err(e) = r {
+                                tracing::warn!(error = %e, "opening a link failed");
+                            }
+                        },
+                    );
+                }
+            });
+            text.add_controller(click);
+        }
         text.add_css_class("bubble");
         text.add_css_class(if out { "outgoing" } else { "incoming" });
         if out && m.state == MessageState::Failed {
@@ -1436,6 +1476,32 @@ impl Ui {
             l.set_margin_end(6);
             col.append(&l);
         }
+        // Long-press (or right-click) a message: copy it, or delete it from
+        // this phone.
+        {
+            let id = m.id;
+            let body = m.body.clone();
+            let weak = Rc::downgrade(self);
+            let press = gtk::GestureLongPress::new();
+            press.set_propagation_phase(gtk::PropagationPhase::Capture);
+            press.connect_pressed(move |g, _, _| {
+                g.set_state(gtk::EventSequenceState::Claimed);
+                if let Some(ui) = weak.upgrade() {
+                    ui.message_menu(id, body.clone());
+                }
+            });
+            col.add_controller(press);
+            let body = m.body.clone();
+            let weak = Rc::downgrade(self);
+            let click = gtk::GestureClick::new();
+            click.set_button(3);
+            click.connect_pressed(move |_, _, _, _| {
+                if let Some(ui) = weak.upgrade() {
+                    ui.message_menu(id, body.clone());
+                }
+            });
+            col.add_controller(click);
+        }
         if out && m.state == MessageState::Failed {
             let id = m.id;
             let weak = Rc::downgrade(self);
@@ -1448,6 +1514,125 @@ impl Ui {
             col.add_controller(click);
         }
         col.upcast()
+    }
+
+    fn message_menu(self: &Rc<Self>, id: i64, body: String) {
+        let w = Rc::downgrade(self);
+        let w2 = w.clone();
+        let w3 = w.clone();
+        let part = body.clone();
+        self.sheet(
+            "Message",
+            vec![
+                (
+                    "Copy text".into(),
+                    false,
+                    Box::new(move || {
+                        if let Some(ui) = w.upgrade() {
+                            ui.window.clipboard().set_text(&body);
+                            ui.toast("Copied");
+                        }
+                    }),
+                ),
+                (
+                    "Select text".into(),
+                    false,
+                    Box::new(move || {
+                        if let Some(ui) = w3.upgrade() {
+                            ui.select_text(&part);
+                        }
+                    }),
+                ),
+                (
+                    "Delete".into(),
+                    true,
+                    Box::new(move || {
+                        if let Some(ui) = w2.upgrade() {
+                            ui.confirm_delete_message(id);
+                        }
+                    }),
+                ),
+            ],
+        );
+    }
+
+    /// The whole message, selectable, to copy just a part of it: a
+    /// long-press selects a word with handles to widen it.
+    fn select_text(self: &Rc<Self>, body: &str) {
+        let dialog = adw::Dialog::builder().title("Select text").build();
+        let tv = adw::ToolbarView::new();
+        tv.add_top_bar(&adw::HeaderBar::new());
+        let col = gtk::Box::new(gtk::Orientation::Vertical, 8);
+        col.set_margin_start(12);
+        col.set_margin_end(12);
+        col.set_margin_bottom(12);
+        col.set_size_request(300, -1);
+        let view = gtk::Label::builder()
+            .label(body)
+            .wrap(true)
+            .wrap_mode(pango::WrapMode::WordChar)
+            .xalign(0.0)
+            .yalign(0.0)
+            .selectable(true)
+            .margin_top(8)
+            .margin_bottom(8)
+            .build();
+        let scroll = gtk::ScrolledWindow::builder()
+            .child(&view)
+            .min_content_height(120)
+            .max_content_height(360)
+            .propagate_natural_height(true)
+            .build();
+        col.append(&scroll);
+        let copy = gtk::Button::with_label("Copy selection");
+        copy.add_css_class("suggested-action");
+        copy.add_css_class("pill");
+        let weak = Rc::downgrade(self);
+        let d = dialog.clone();
+        copy.connect_clicked(move |_| {
+            let all = view.label().to_string();
+            // The selection in characters; nothing selected copies it all.
+            let text = match view.selection_bounds() {
+                Some((a, b)) if a != b => {
+                    let (a, b) = (a.min(b) as usize, a.max(b) as usize);
+                    all.chars().skip(a).take(b - a).collect()
+                }
+                _ => all,
+            };
+            if let Some(ui) = weak.upgrade() {
+                ui.window.clipboard().set_text(&text);
+                ui.toast("Copied");
+            }
+            d.close();
+        });
+        col.append(&copy);
+        tv.set_content(Some(&col));
+        dialog.set_child(Some(&tv));
+        dialog.present(Some(&self.window));
+    }
+
+    fn confirm_delete_message(self: &Rc<Self>, id: i64) {
+        let dialog = adw::AlertDialog::new(
+            Some("Delete this message?"),
+            Some("It is deleted from this phone only."),
+        );
+        dialog.add_responses(&[("cancel", "Cancel"), ("delete", "Delete")]);
+        dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        dialog.set_default_response(Some("cancel"));
+        dialog.set_close_response("cancel");
+        let weak = Rc::downgrade(self);
+        dialog.connect_response(None, move |_, response| {
+            if response != "delete" {
+                return;
+            }
+            let Some(ui) = weak.upgrade() else { return };
+            if let Err(e) = ui.store.delete_message(id) {
+                tracing::warn!(error = %e, "deleting a message failed");
+                ui.toast("Couldn't delete the message");
+            }
+            ui.refresh_all();
+        });
+        dialog.present(Some(&self.window));
     }
 
     fn failed_menu(self: &Rc<Self>, id: i64) {

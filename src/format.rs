@@ -105,8 +105,90 @@ where
     }
 }
 
+/// The web addresses in a message body (`http://`, `https://`, or `www.`),
+/// as byte ranges into it and the address to open. Punctuation around an
+/// address stays outside it: "(https://x.lu)." gives "https://x.lu".
+pub fn links(body: &str) -> Vec<(usize, usize, String)> {
+    let mut found = Vec::new();
+    let mut at = 0;
+    for word in body.split_inclusive(char::is_whitespace) {
+        let start = at;
+        at += word.len();
+        let core = word.trim_end_matches(char::is_whitespace);
+        let lead = core.len()
+            - core
+                .trim_start_matches(|c: char| "([{<'\"".contains(c))
+                .len();
+        let url = core[lead..].trim_end_matches(|c: char| ".,;:!?)]}>'\"".contains(c));
+        let lower = url.to_ascii_lowercase();
+        let scheme = lower.starts_with("http://") || lower.starts_with("https://");
+        if (scheme || lower.starts_with("www.")) && url.len() > 4 && !url.ends_with("://") {
+            let href = if scheme {
+                url.to_string()
+            } else {
+                format!("https://{url}")
+            };
+            found.push((start + lead, start + lead + url.len(), href));
+        }
+    }
+    found
+}
+
+/// Pango markup for a message body with its web addresses underlined, or
+/// None when it has none. The bubble opens them on a tap itself (a label's
+/// own links would take the long-press for the message menu).
+pub fn link_markup(body: &str) -> Option<String> {
+    fn esc(s: &str) -> String {
+        s.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+            .replace('\'', "&apos;")
+    }
+    let found = links(body);
+    if found.is_empty() {
+        return None;
+    }
+    let mut out = String::new();
+    let mut at = 0;
+    for (a, b, _) in &found {
+        out.push_str(&esc(&body[at..*a]));
+        out.push_str(&format!("<u>{}</u>", esc(&body[*a..*b])));
+        at = *b;
+    }
+    out.push_str(&esc(&body[at..]));
+    Some(out)
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn links_in_a_message() {
+        assert_eq!(link_markup("no link here"), None);
+        let b = "Your code is 123456. Not you? https://example.com/z/abc123";
+        assert_eq!(
+            links(b),
+            vec![(30, b.len(), "https://example.com/z/abc123".to_string())]
+        );
+        assert_eq!(
+            link_markup(b).as_deref(),
+            Some("Your code is 123456. Not you? <u>https://example.com/z/abc123</u>")
+        );
+        assert_eq!(
+            link_markup("see www.example.org/a?b=1&c=2.").as_deref(),
+            Some("see <u>www.example.org/a?b=1&amp;c=2</u>.")
+        );
+        assert_eq!(
+            links("see www.example.org/x.")[0].2,
+            "https://www.example.org/x"
+        );
+        assert_eq!(
+            link_markup("<b> & (https://x.lu)").as_deref(),
+            Some("&lt;b&gt; &amp; (<u>https://x.lu</u>)")
+        );
+        assert_eq!(links("https:// alone"), vec![]);
+    }
+
     use super::*;
     use chrono::{FixedOffset, Utc};
 
