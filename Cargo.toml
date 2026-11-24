@@ -1,6 +1,6 @@
 [package]
 name = "omamessages"
-description = "Messages: SMS conversations for Omarchy Mobile"
+description = "Messages: SMS conversations for Omamobile"
 version = "0.2.2"
 edition = "2021"
 license = "GPL-3.0-or-later"

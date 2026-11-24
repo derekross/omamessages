@@ -1,6 +1,6 @@
 # omamessages
 
-Omarchy Mobile's Messages app. It uses omatel's shared crates
+Omamobile's Messages app. It uses omatel's shared crates
 (https://github.com/derekross/omatel) as git dependencies pinned to a
 release tag, and talks to the modem only through omatel-agent's
 session-bus API (`omatel-api`).

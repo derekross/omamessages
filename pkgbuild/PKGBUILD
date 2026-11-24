@@ -1,6 +1,6 @@
 # Maintainer: Derek Ross <derekross@gmail.com>
 #
-# Builds omamessages from this checkout. Omarchy Mobile's packages/omamessages builds a
+# Builds omamessages from this checkout. Omamobile's packages/omamessages builds a
 # pinned release the same way.
 pkgname=omamessages
 pkgver=$(sed -n 's/^version = "\(.*\)"/\1/p' "$startdir/../Cargo.toml" | head -1)
