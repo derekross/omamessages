@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! omamessages: SMS for Omarchy Mobile, shown as "Messages".
+//! omamessages: SMS for Omamobile, shown as "Messages".
 //!
 //! The app reads the conversations the agent (`omatel-agent`) stores in
 //! `~/.local/share/omatel/messages.db` and sends through the agent's
@@ -17,7 +17,7 @@ use clap::Parser;
 use gtk4 as gtk;
 
 #[derive(Debug, Clone, Parser)]
-#[command(name = "omamessages", version, about = "Messages for Omarchy Mobile")]
+#[command(name = "omamessages", version, about = "Messages for Omamobile")]
 pub struct Cli {
     /// An sms:, smsto:, mms: or mmsto: link, or a number: opens a new
     /// message to it, with the link's body filled in (never sent by itself).

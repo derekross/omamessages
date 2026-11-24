@@ -1,6 +1,6 @@
 # omamessages
 
-omamessages is Omarchy Mobile's **Messages** app. It is laid out for a phone held
+omamessages is Omamobile's **Messages** app. It is laid out for a phone held
 upright (480 logical pixels wide) and follows your Omarchy theme. It
 behaves like AOSP's Messaging app; none of AOSP's code is used.
 
@@ -29,7 +29,7 @@ attach button is there, disabled), and RCS (not planned).
 
 ## Install
 
-On Omarchy Mobile, install the `omamessages` package; it brings in
+On Omamobile, install the `omamessages` package; it brings in
 `omatel-agent`. Start the agent once for your user:
 
 ```
